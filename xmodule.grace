@@ -545,7 +545,7 @@ method buildGctFor(module) {
 method addFreshMethodsOf (moduleObject) to (gct) is confidential {
     // adds information about the methods made available via fresh methods.
     // This is done in a separate pass after public information is in the gct,
-    // because of the special treatment of prelude.clone
+    // because of the special treatment of intrinsic.clone
     // TODO: doesn't this just duplicate what's in 'classes' ? No: 'classes'
     // lists only classes declared inside a def'd object constructor, i.e.,
     // something simulating he old "dotted" class
@@ -571,7 +571,7 @@ method addFreshMethod (node) to (freshlist) for (gct) is confidential {
     } elseif {freshMethExpression.isCall} then {
         // this deals with the two special cases, defined in
         // ast.callNode.returnsObject.  The freshMethExpression must
-        // be a request of self.copy or prelude.clone(_)
+        // be a request of self.copy or intrinsic.clone(_)
         def requestedName = freshMethExpression.nameString
         if (requestedName == "copy") then {
             gct.at "fresh:{methName}" put(gct.at "public")

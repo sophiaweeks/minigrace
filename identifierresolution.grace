@@ -298,6 +298,10 @@ class newScopeIn(parent') kind(variety') {
                                 scope(self)) scope(self).onSelf
                 } elseif { s.variety == "module" } then {
                     return ast.memberNode.new(name, thisModule) scope(self).onSelf
+                } elseif { s == builtInsScope } then {
+                    return ast.memberNode.new(name,
+                          ast.identifierNode.new("intrinsic", false)
+                                scope(self)) scope(self)
                 }
                 def rcvr = if (outerChain.isEmpty) then {
                     ast.identifierNode.new("self", false) scope(self).
@@ -682,7 +686,10 @@ method transformIdentifier(node) ancestors(as) {
     }
     checkForAmbiguityOf (node) definedIn (definingScope) as (nodeKind)
     def v = definingScope.variety
-    if (v == "built-in") then { return node }
+    if (v == "built-in") then {
+        def b = ast.identifierNode.new("intrinsic", false) scope(nodeScope)
+        return ast.memberNode.new(nm, b) scope(nodeScope)
+    }
     if (v == "dialect") then {
         def p = ast.identifierNode.new("prelude", false) scope(nodeScope)
         return ast.memberNode.new(nm, p) scope(nodeScope).onSelf
@@ -918,53 +925,60 @@ method setupContext(moduleObject) {
     // define the built-in names
     util.setPosition(0, 0)
 
-    builtInsScope.addName "Type" as(k.typedec)
-    builtInsScope.addName "Object" as(k.typedec)
-    builtInsScope.addName "Unknown" as(k.typedec)
-    builtInsScope.addName "String" as(k.typedec)
-    builtInsScope.addName "Number" as(k.typedec)
-    builtInsScope.addName "Boolean" as(k.typedec)
-    builtInsScope.addName "Block" as(k.typedec)
-    builtInsScope.addName "Done" as(k.typedec)
-    builtInsScope.addName "done" as(k.defdec)
+    def typedecKind = k.typedec
+    def defdecKind = k.defdec
+
+    builtInsScope.addName "Type" as(typedecKind)
+    builtInsScope.addName "Object" as(typedecKind)
+    builtInsScope.addName "Unknown" as(typedecKind)
+    builtInsScope.addName "String" as(typedecKind)
+    builtInsScope.addName "Number" as(typedecKind)
+    builtInsScope.addName "Boolean" as(typedecKind)
+    builtInsScope.addName "Block" as(typedecKind)
+    builtInsScope.addName "Done" as(typedecKind)
+    builtInsScope.addName "done" as(defdecKind)
     builtInsScope.addName "true"
     builtInsScope.addName "false"
-    builtInsScope.addName "outer" as(k.defdec)
+    builtInsScope.addName "outer" as(defdecKind)
     builtInsScope.addName "readable"
     builtInsScope.addName "writable"
     builtInsScope.addName "public"
     builtInsScope.addName "confidential"
     builtInsScope.addName "override"
     builtInsScope.addName "parent"
-    builtInsScope.addName "..." as(k.defdec)
+    builtInsScope.addName "..." as(defdecKind)
+    builtInsScope.addName "for(1)do(1)"
+    builtInsScope.addName "while(1)do(1)"
+    builtInsScope.addName "print(1)"
+    builtInsScope.addName "native(1)code(1)"
+    builtInsScope.addName "native(1)header(1)"
+    builtInsScope.addName "Exception" as(defdecKind)
+    builtInsScope.addName "RuntimeError" as(defdecKind)
+    builtInsScope.addName "NoSuchMethod" as(defdecKind)
+    builtInsScope.addName "ProgrammingError" as(defdecKind)
+    builtInsScope.addName "TypeError" as(defdecKind)
+    builtInsScope.addName "ResourceException" as(defdecKind)
+    builtInsScope.addName "EnvironmentException" as(defdecKind)
+    builtInsScope.addName "π" as(defdecKind)
+    builtInsScope.addName "infinity" as(defdecKind)
+    builtInsScope.addName "minigrace"
+    builtInsScope.addName "_methods"
+    builtInsScope.addName "primitiveArray"
+    builtInsScope.addName "become(1)"
+    builtInsScope.addName "unbecome(1)"
+    builtInsScope.addName "clone(1)"
+    builtInsScope.addName "inBrowser"
+    builtInsScope.addName "engine"
+    builtInsScope.addName "intrinsic"
 
-    preludeScope.addName "asString"
-    preludeScope.addName "::(1)"
-    preludeScope.addName "++(1)"
-    preludeScope.addName "==(1)"
-    preludeScope.addName "≠(1)"
-    preludeScope.addName "for(1)do(1)"
-    preludeScope.addName "while(1)do(1)"
-    preludeScope.addName "print(1)"
-    preludeScope.addName "native(1)code(1)"
-    preludeScope.addName "native(1)header(1)"
-    preludeScope.addName "Exception" as(k.defdec)
-    preludeScope.addName "RuntimeError" as(k.defdec)
-    preludeScope.addName "NoSuchMethod" as(k.defdec)
-    preludeScope.addName "ProgrammingError" as(k.defdec)
-    preludeScope.addName "TypeError" as(k.defdec)
-    preludeScope.addName "ResourceException" as(k.defdec)
-    preludeScope.addName "EnvironmentException" as(k.defdec)
-    preludeScope.addName "π" as(k.defdec)
-    preludeScope.addName "infinity" as(k.defdec)
-    preludeScope.addName "minigrace"
-    preludeScope.addName "_methods"
-    preludeScope.addName "primitiveArray"
-    preludeScope.addName "become(1)"
-    preludeScope.addName "unbecome(1)"
-    preludeScope.addName "clone(1)"
-    preludeScope.addName "inBrowser"
-    preludeScope.addName "engine"
+    def inheritedKind = k.inherited
+
+    preludeScope.addName "asString" as (inheritedKind)
+    preludeScope.addName "asDebugString" as (inheritedKind)
+    preludeScope.addName "basicAsString" as (inheritedKind)
+    preludeScope.addName "::(1)" as (inheritedKind)
+    preludeScope.addName "isMe(1)" as (inheritedKind)
+    preludeScope.addName "≠(1)" as (inheritedKind)
 
     graceObjectScope.addName "isMe(1)" as (k.graceObjectMethod)
     graceObjectScope.addName "≠(1)" as (k.graceObjectMethod)
@@ -980,9 +994,9 @@ method setupContext(moduleObject) {
 
     builtInsScope.addName "graceObject"
     builtInsScope.at "graceObject" putScope(graceObjectScope)
-    builtInsScope.addName "prelude" as(k.defdec)
+    builtInsScope.addName "prelude" as(defdecKind)
     builtInsScope.at "prelude" putScope(preludeScope)
-    builtInsScope.addName "_prelude" as(k.defdec)
+    builtInsScope.addName "_prelude" as(defdecKind)
     builtInsScope.at "_prelude" putScope(preludeScope)
     builtInsScope.at "true" putScope(booleanScope)
     builtInsScope.at "false" putScope(booleanScope)
@@ -991,6 +1005,7 @@ method setupContext(moduleObject) {
     def dialectName:String = dialectNode.value
     util.log 50 verbose "in dialect {dialectName}"
     if (dialectName ≠ "none") then {
+        util.setPosition(dialectNode.line, dialectNode.linePos)
         xmodule.checkExternalModule(dialectNode)
         def gctDict = xmodule.parseGCT(dialectName)
         util.log 50 verbose("got gct for {dialectName}; public methods are " ++

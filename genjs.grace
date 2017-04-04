@@ -1110,7 +1110,14 @@ method compileOuterRequest(o, args) {
           ", \"{escapestring(o.nameString)}\"" ++
           ", [{partl(o)}]{assembleArguments(args)});")
 }
-
+method compileIntrinsic(o, args) {
+    out "// call case 3: intrinsic request"
+    def numArgs = o.numArgs + o.numTypeArgs
+    def extra = if (numArgs > maxArgsToRequest) then { "WithArgs" } else { "" }
+    out("var {o.register} = selfRequest{extra}(Grace_builtIns" ++
+          ", \"{escapestring(o.nameString)}\"" ++
+          ", [{partl(o)}]{assembleArguments(args)});")
+}
 method compileSelfRequest(o, args) {
     out "// call case 4: self request"
     def numArgs = o.numArgs + o.numTypeArgs
@@ -1142,6 +1149,8 @@ method compilecall(o) {
     def receiver = o.receiver
     if ( receiver.isOuter ) then {
         compileOuterRequest(o, args)
+    } elseif { receiver.isIntrinsic } then {
+        compileIntrinsic(o, args)
     } elseif { receiver.isSelf } then {
         compileSelfRequest(o, args)
     } elseif { receiver.isPrelude } then {

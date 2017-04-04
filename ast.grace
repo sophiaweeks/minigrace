@@ -238,6 +238,7 @@ class baseNode {
     method isSuper { false }
     method isPrelude { false }
     method isOuter { false }
+    method isIntrinsic { false }
     method isSelfOrOuter { false }
     method isBlock { false }
     method isObject { false }
@@ -2008,6 +2009,7 @@ def identifierNode is public = object {
         method isSuper { "super" == value }
         method isPrelude { "prelude" == value }
         method isOuter { "outer" == value }
+        method isIntrinsic { "intrinsic" == value }
         method isSelfOrOuter {
             if (isSelf) then { return true }
             if (isOuter) then { return true }
@@ -3281,8 +3283,8 @@ def patternMarkVisitor = object {
 
 method findAnnotation(node, annName) {
     for (node.annotations) do {ann->
-        if ((ann.kind == "identifier") && {
-            ann.value == annName }) then {
+        if ( ((ann.kind == "identifier") || (ann.kind == "member")) && {
+            ann.value == annName } ) then {
             return object {
                 inherit true
                 def value is public = ann

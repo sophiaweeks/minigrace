@@ -57,8 +57,8 @@ function MiniGrace() {
 
 MiniGrace.prototype.trapErrors = function(func) {
     this.exception = null;
-    if (Grace_prelude.methods["while()do"])
-        Grace_prelude.methods["while()do"].safe = this.breakLoops;
+    if (Grace_builtIns.methods["while()do"])
+        Grace_builtIns.methods["while()do"].safe = this.breakLoops;
     try {
         func();
     } catch (e) {
@@ -109,6 +109,7 @@ MiniGrace.prototype.trapErrors = function(func) {
                     });
                 }
             }
+            process.exit(2);
         } else if (e === "SystemExit") {
             process.exit(1);
         } else {
@@ -118,8 +119,8 @@ MiniGrace.prototype.trapErrors = function(func) {
             process.exit(2);
         }
     } finally {
-        if (Grace_prelude.methods["while()do"])
-            Grace_prelude.methods["while()do"].safe = false;
+        if (Grace_builtIns.methods["while()do"])
+            Grace_builtIns.methods["while()do"].safe = false;
     }
 };
 
@@ -277,9 +278,6 @@ try {
     minigrace.execFile = abspath(exFile);
 
     minigrace.trapErrors(function() {
-        // as as special case, do_import("standardGrace", …) adds to Grace_prelude,
-        // rather than creating a new module object.
-        do_import('standardGrace', gracecode_standardGrace);
         minigrace.run(exFile);
     });
 } catch (e) {
