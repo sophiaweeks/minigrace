@@ -623,7 +623,9 @@ class list⟦T⟧ {
     method empty -> List⟦T⟧ {
         withAll(emptySequence)
     }
-
+    method with(x) -> List⟦T⟧ {
+        withAll [x]
+    }
     method withAll(a: Collection⟦T⟧) -> List⟦T⟧ {
         object {
             use indexable⟦T⟧
@@ -929,7 +931,9 @@ class set⟦T⟧ {
         a.do { x -> result.add(x) }
         result
     }
-    
+    method with(x) -> List⟦T⟧ {
+        empty.add(x)
+    }
     method empty -> Set⟦T⟧ {
         ofCapacity 8
     }
