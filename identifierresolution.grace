@@ -923,13 +923,6 @@ method buildSymbolTableFor(topNode) ancestors(topChain) {
             if (callee.kind == "identifier") then {
                 callee.inRequest := true
             }
-            if (enclosingNode.isMethod) then {
-                if (enclosingNode.body.last == o) then {
-                    o.isTailCall := true
-                }
-            } elseif { enclosingNode.isReturn } then {
-                    o.isTailCall := true
-            }
             return true
         }
         method visitBlock (o) up (anc) {
@@ -1024,9 +1017,6 @@ method buildSymbolTableFor(topNode) ancestors(topChain) {
                 ident.isDeclaredByParent := true
                 // aliased and excluded names are appliedOccurences
                 o.scope := newScopeIn(surroundingScope) kind "method"
-                if (o.returnsObject) then {
-                    o.isFresh := true
-                }
             }
             if (o.body.isEmpty.not && {o.body.last.isObject}) then {
                 o.body.last.name := o.canonicalName
@@ -1418,9 +1408,6 @@ method transformCall(cNode) -> ast.AstNode {
             definedIn (definingScope) asA (definingScope.kind(methodName))
         cNode.receiver := rcvr.receiver
         cNode.onSelf
-        if (definingScope.kind(methodName) == "object") then {
-            cNode.isFresh := true
-        }
     } elseif { nominalRcvr.isOuter && (cNode.nameString == "outer") } then {
         // deal with outer.outer ..., which has been parsed into a memberNode
         // The reciever has already been converted from an identifier to an
@@ -1430,18 +1417,8 @@ method transformCall(cNode) -> ast.AstNode {
         def newOuter = priorOuter.scope.parent.enclosingObjectScope.node
         nominalRcvr.theObjects.addLast(newOuter)
         result := nominalRcvr
-    } else {
-        if (cNode.isTailCall) then {    // don't do this work if no one cares
-            result.isFresh := callReturnsFreshObject(cNode)
-        }
     }
     result
-}
-
-method callReturnsFreshObject(cNode) {
-    def rcvrScope = cNode.scope.receiverScope(cNode.receiver)
-    def ansrScope = rcvrScope.getScope(cNode.nameString)
-    ansrScope.isObjectScope
 }
 
 method resolve(moduleObject) {
