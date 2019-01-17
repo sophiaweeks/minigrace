@@ -270,7 +270,7 @@ class baseNode {
     method isImport { false }
     method isTypeDec { false }
     method isExternal { false }
-    method isFresh { false }
+    method isFresh -> Boolean { false }
     method isConstant { false }
     method isSequenceConstructor { false }
     method canInherit { false }
@@ -308,6 +308,11 @@ class baseNode {
         // sets the symboltable, and answers self, for chaining.
         scope := st
         self
+    }
+    method containsReturn {
+        def v = returnsVisitor
+        self.accept(v)
+        v.result
     }
     method shallowCopyFieldsFrom(other) {
         register := other.register
@@ -351,6 +356,22 @@ class baseNode {
         cmtNodeList.do { each -> addComment(each) }
     }
     method statementName { kind }
+
+    method returnsFreshObject {
+        // this is too high in the inheritance chain.
+        // TODO: refactor so that there is a parent class for all requests
+        if (self.receiver.isImplicit) then {
+            // this call has not yet been resolved, so let's assume that it
+            // does not return a fresh object
+            
+            return false
+        }
+        def rcvrScope = scope.receiverScope(self.receiver)
+        def ansrScope = rcvrScope.getScope(self.nameString)
+        ansrScope.isObjectScope
+    }
+
+
 }
 
 def implicit is public = object {
@@ -400,8 +421,14 @@ class fakeSymbolTable is public {
     method enclosingObjectScope {
         ProgrammingError.raise "fakeSymbolTable(on node {node}).enclosingObjectScope"
     }
+    method receiverScope (_) { self }
+    method isObjectScope { false }
+    method isMethodScope { false }
+    method isModuleScope { false }
+    method isInheritableScope { false }
     method variety { "fake" }
     method elementScopesAsString { "[fake]" }
+    method getScope (_) { self }
 }
 
 def ifNode is public = object {
@@ -1017,7 +1044,6 @@ def methodNode is public = object {
         var dtype is public := dtype'
         var selfclosure is public := false
         var annotations is public := [ ]
-        var isFresh is public := false      // a method is 'fresh' if it answers a new object
         var isOnceMethod is public := false
         var usesClassSyntax is public := false
         var cachedIdentifier := uninitialized
@@ -1130,13 +1156,27 @@ def methodNode is public = object {
         method isMethod { true }
         method isExecutable { false }
         method isLegalInTrait { true }
-        method isClass { isFresh || usesClassSyntax }
+        method isClass { isFresh }
         method isTrait {
             if (isFresh) then {
                 body.last.isTrait
             } else {
                 false
             }
+        }
+        once method isFresh -> Boolean {
+            // answers true if this method returns a fresh object
+
+            if (usesClassSyntax) then { return true }
+            if (body.size == 0) then { return false }
+            if (containsEarlyReturn(body)) then { return false }
+            return body.last.returnsObject
+        }
+        method containsEarlyReturn (stmts) is confidential {
+            for (1..(stmts.size - 1)) do { i ->
+                if (stmts.at(i).containsReturn) then { return true }
+            }
+            return false
         }
         method needsArgChecks {
             signature.do { part ->
@@ -1166,11 +1206,8 @@ def methodNode is public = object {
         method usesAsType(aNode) {
             aNode == dtype
         }
-        method returnsObject {
-            body.isEmpty.not && {body.last.returnsObject}
-        }
         method returnedObjectScope {
-            // precondition: returnsObject
+            // precondition: isFresh
             body.last.returnedObjectScope
         }
         method resultExpression {   // precondition: body is not empty
@@ -1280,7 +1317,6 @@ def methodNode is public = object {
             methodNode.new(signature, body, dtype).shallowCopyFieldsFrom(self)
         }
         method postCopy(other) {
-            isFresh := other.isFresh
             isOnceMethod := other.isOnceMethod
             hasBody := other.hasBody
             selfclosure := other.selfclosure
@@ -1308,8 +1344,6 @@ def callNode is public = object {
         var isPattern is public := false
         var receiver is public := receiver'    // formerly `value`
         var isSelfRequest is public := false
-        var isTailCall is public := false      // is possibly the result of a method
-        var isFresh is public := false         // calls a fresh method
         var cachedIdentifier := uninitialized
         var endPos is public := noPosition
 
@@ -1358,6 +1392,9 @@ def callNode is public = object {
         method isClone {
             ((receiver.isImplicit || receiver.isPrelude) &&
                   (nameString == "clone(1)"))
+        }
+        once method isFresh -> Boolean {
+            self.returnsFreshObject
         }
         method returnedObjectScope {
             // precondition: returnsObject
@@ -1470,8 +1507,6 @@ def callNode is public = object {
         method postCopy(other) {
             isPattern := other.isPattern
             isSelfRequest := other.isSelfRequest
-            isTailCall := other.isTailCall
-            isFresh := other.isFresh
             endPos := other.endPos
             self
         }
@@ -1603,7 +1638,7 @@ def objectNode is public = object {
                 kind
             }
         }
-        method isFresh { true }     // the epitome of freshness!
+        method isFresh -> Boolean { true }     // the epitome of freshness!
         method isTrait {
             // answers true if this object qualifies to be a trait, whether
             // or not it was declared with the trait syntax
@@ -1839,8 +1874,6 @@ def memberNode is public = object {
         var receiver is public := receiver'
         var generics is public := false
         var isSelfRequest is public := false
-        var isTailCall is public := false      // is possibly the result of a method
-        var isFresh is public := false         // calls a fresh method
         method end -> Position {
             if (receiver.isImplicit) then {
                 positionOfNext (request) after (start)
@@ -1890,6 +1923,9 @@ def memberNode is public = object {
         }
         method isSelfOrOuter {
             receiver.isSelfOrOuter
+        }
+        once method isFresh -> Boolean {
+            self.returnsFreshObject
         }
         method map(blk) ancestors(ac) {
             var n := shallowCopy
@@ -1946,7 +1982,6 @@ def memberNode is public = object {
         method postCopy(other) {
             generics := other.generics
             isSelfRequest := other.isSelfRequest
-            isTailCall := other.isTailCall
             self
         }
     }
@@ -2306,7 +2341,6 @@ def opNode is public = object {
     def value is public = op     // a String
     var left is public := l
     var right is public := r
-    var isTailCall is public := false      // is possibly the result of a method
     var isSelfRequest is public := false
 
     method start -> Position { left.start }
@@ -2388,7 +2422,6 @@ def opNode is public = object {
         opNode.new(value, nullNode, nullNode).shallowCopyFieldsFrom(self)
     }
     method postCopy(other) {
-        isTailCall := other.isTailCall
         isSelfRequest := other.isSelfRequest
         self
     }
@@ -3125,9 +3158,11 @@ def requestPart is public = object {
         method pretty(depth) {
             def spc = "  " * (depth+1)
             var s := "{basePretty(depth)}: {name}"
-            s := "{s}\n{spc}Args:"
-            for (args) do { a ->
-                s := "{s}\n  {spc}{a.pretty(depth + 3)}"
+            if (args.isEmpty.not) then {
+                s := "{s}\n{spc}Args:"
+                for (args) do { a ->
+                    s := "{s}\n  {spc}{a.pretty(depth + 3)}"
+                }
             }
             s
         }
@@ -3400,6 +3435,16 @@ def patternMarkVisitor = object {
     method visitCall(c) up(ac) {
         c.isPattern := true
         true
+    }
+}
+
+class returnsVisitor {
+    inherit baseVisitor
+    var result is public := false
+
+    method visitReturn(c) up(ac) {
+        result := true      // yes, we found a return
+        false               // stop the visitation
     }
 }
 
