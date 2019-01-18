@@ -55,7 +55,7 @@ testSuite {
     
     test "f0 returns Object" by {
         assert (f0Method.nameString) shouldBe "f0"
-        assert (f0Method.returnsObject) description "method {f0Method.nameString} is does not return an Object"
+        assert (f0Method.returnsObject) description "method {f0Method.nameString} does not return an Object"
     }
     
     test "ft0 is fresh" by {
@@ -71,7 +71,7 @@ testSuite {
     
     test "f1 returns Object" by {
         assert (f1Method.nameString) shouldBe "f1(1)"
-        assert (f1Method.returnsObject) description "method {f1Method.nameString} is does not return an Object"
+        assert (f1Method.returnsObject) description "method {f1Method.nameString} does not return an Object"
     }
     
     
