@@ -29,6 +29,17 @@ method ft1(a) {
     print "ft1 executed"
     f1(a)
 }
+
+class c0 {
+    var c is public
+}
+
+method ft2(a) {
+    print "ft1 executed"
+    ft1(a)
+}
+
+self.c0
 ›.split "\n"
 
 util.lines.clear
@@ -42,6 +53,9 @@ def f0Method = decorated.body.first
 def ft0Method = decorated.body.second
 def f1Method = decorated.body.third
 def ft1Method = decorated.body.fourth
+def c0Method = decorated.body.fifth
+def ft2Method = decorated.body.at 6
+def c0Request = decorated.body.at 7
 
 //print "ft0 body = {ft0Method.body.last.pretty 1}"
 //print ""
@@ -52,15 +66,14 @@ testSuite {
         assert (f0Method.nameString) shouldBe "f0"
         assert (f0Method.isFresh) description "method {f0Method.nameString} is not Fresh"
     }
-    
-    test "f0 returns Object" by {
+
+    test "f0 does not return an Object" by {
         assert (f0Method.nameString) shouldBe "f0"
-        assert (f0Method.returnsObject) description "method {f0Method.nameString} does not return an Object"
+        deny (f0Method.returnsObject) description "method declarations do not return an Object"
     }
-    
+
     test "ft0 is fresh" by {
         assert (ft0Method.nameString) shouldBe "ft0"
-//        assert (ft0Method.isFresh) description "method {ft0Method.nameString} is not Fresh\n{ft0Method.pretty 1}"
         assert (ft0Method.isFresh) description "method {ft0Method.nameString} is not Fresh"
     }
 
@@ -68,16 +81,30 @@ testSuite {
         assert (f1Method.nameString) shouldBe "f1(1)"
         assert (f1Method.isFresh) description "method {f1Method.nameString} is not Fresh\n{f1Method.pretty 1}"
     }
-    
-    test "f1 returns Object" by {
+
+    test "f1 does not return an Object" by {
         assert (f1Method.nameString) shouldBe "f1(1)"
-        assert (f1Method.returnsObject) description "method {f1Method.nameString} does not return an Object"
+        deny (f1Method.returnsObject) description "method declarations do not return an Object"
     }
-    
-    
+
     test "ft1 is fresh" by {
         assert (ft1Method.nameString) shouldBe "ft1(1)"
-//        assert (ft1Method.isFresh) description "method {ft1Method.nameString} is not Fresh\n{ft1Method.pretty 1}"
         assert (ft1Method.isFresh) description "method {ft1Method.nameString} is not Fresh"
+    }
+
+    test "ft2 is fresh" by {
+        assert (ft2Method.nameString) shouldBe "ft2(1)"
+        assert (ft2Method.isFresh) description "method {ft2Method.nameString} is not Fresh"
+    }
+
+    test "c0 is fresh" by {
+        assert (c0Method.nameString) shouldBe "c0"
+        assert (c0Method.isFresh) description "method {c0Method.nameString} is not Fresh"
+    }
+
+    test "c0Request returns Object" by {
+        assert (c0Request.nameString) shouldBe "c0"
+        assert (c0Request.kind) shouldBe "member"
+        assert (c0Request.returnsObject) description "request of class c0 does not return an Object"
     }
 }
