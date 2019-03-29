@@ -696,9 +696,8 @@ method addFreshMethod (node) to (freshlist) for (gct) is confidential {
                 } )
             }
         } else {
-            // if it's not a call or an object constructor, why is it labelled as fresh?
-            ProgrammingError.raise
-                "unrecognized fresh method tail-call: {freshMethExpression.pretty(0)}"
+            // tail-call is a request of some other fresh method
+            gct.at "fresh:{methName}" put(node.returnedObjectScope.keysAsList)
         }
     } else {
         ProgrammingError.raise

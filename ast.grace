@@ -3,6 +3,7 @@
 import "util" as util
 import "identifierKinds" as k
 
+
 // This module contains classes and pseudo-classes for all the AST nodes used
 // in the parser. Because of the limitations of the class syntax, classes that
 // need more than one method are written as object literals containing methods.
@@ -11,8 +12,10 @@ import "identifierKinds" as k
 //
 // Most nodes also contain a "value" field, with varied type, holding the `main value`
 // in the node.  This field is confusing and should be appropriately re-named in
-// each case. Some nodes contain other fields for their specific use: while has
-// both a value (the condition) and a body, for example.
+// each case. Some nodes contain other fields for their specific use, e.g., ifNode has
+// both a value (the condition) and then and else blocks.
+
+var resolver is public // injected by initialization of  identifierResolution; used to break circular dependency
 
 type Position = interface {
     line -> Number
@@ -270,11 +273,11 @@ class baseNode {
     method isImport { false }
     method isTypeDec { false }
     method isExternal { false }
-    method isFresh -> Boolean { false }
+    // method isFresh { false }
     method isConstant { false }
     method isSequenceConstructor { false }
     method canInherit { false }
-    method returnsObject { false }
+    method returnsObject { false }      // baseNode
     method isImplicit { false }
     method usesAsType(aNode) { false }
     method hash { line.hash * linePos.hash }
@@ -357,21 +360,18 @@ class baseNode {
     }
     method statementName { kind }
 
-    method returnsFreshObject {
+    method requestReturnsFreshObject {
         // this is too high in the inheritance chain.
         // TODO: refactor so that there is a parent class for all requests
         if (self.receiver.isImplicit) then {
-            // this call has not yet been resolved, so let's assume that it
-            // does not return a fresh object
-            
-            return false
+            resolver.resolveImplicitReceiverIn(self)
         }
         def rcvrScope = scope.receiverScope(self.receiver)
         def ansrScope = rcvrScope.getScope(self.nameString)
-        ansrScope.isObjectScope
+        def result = ansrScope.generatorIsFresh
+        util.log 50 verbose "does {self.toGrace 0} return a fresh object? {if (result) then {"yes"} else {"no"} }"
+        result
     }
-
-
 }
 
 def implicit is public = object {
@@ -400,6 +400,7 @@ def nullNode is public = object {
     method range { emptyRange }
     method asString { "the nullNode" }
     method isNull { true }
+    method isFresh { false }
 }
 
 class fakeSymbolTable is public {
@@ -429,6 +430,10 @@ class fakeSymbolTable is public {
     method variety { "fake" }
     method elementScopesAsString { "[fake]" }
     method getScope (_) { self }
+    method generatorIsFresh {
+        ProgrammingError.raise "fakeSymbolTable asked if generatorIsFresh"
+        false
+    }
 }
 
 def ifNode is public = object {
@@ -527,8 +532,15 @@ def blockNode is public = object {
     }
     method declarationKindWithAncestors(ac) { k.parameter }
     method isMatchingBlock { params.size == 1 }
-    method returnsObject {
+    method returnsObject {      // blockNode
         (body.size > 0) && { body.last.returnsObject }
+    }
+    once method isFresh {
+        (body.size > 0) && {
+            body.last.returnsObject && {
+                body.last.returnedObjectScope.generatorIsFresh
+            }
+        }
     }
     method returnedObjectScope {
         // precondition: returnsObject
@@ -1133,6 +1145,7 @@ def methodNode is public = object {
             }
             cachedIdentifier
         }
+        method asString { "method " ++ self.canonicalName }
         method value { asIdentifier }
         method canonicalName {
             signature.fold { acc, each -> acc ++ each.canonicalName }
@@ -1378,23 +1391,19 @@ def callNode is public = object {
         }
 
         method isCall { true }
-        method returnsObject {
-            // we recognize two special calls ac returning a fresh object
+        once method returnsObject {     // callNode
+            // we recognize two special calls as returning a fresh object
             // self.copy, and prelude.clone(_)
             if (isCopy) then { return true }
             if (isClone) then { return true }
-            isFresh
+            self.requestReturnsFreshObject
         }
         method isCopy {
-            ((receiver.isImplicit || receiver.isSelf) &&
-                (nameString == "copy"))
+            (receiver.isSelfOrOuter) && (nameString == "copy")
         }
         method isClone {
             ((receiver.isImplicit || receiver.isPrelude) &&
                   (nameString == "clone(1)"))
-        }
-        once method isFresh -> Boolean {
-            self.returnsFreshObject
         }
         method returnedObjectScope {
             // precondition: returnsObject
@@ -1541,7 +1550,7 @@ def moduleNode is public = object {
         }
         method isModule { true }
         method isTrait { false }
-        method returnsObject { false }
+        method returnsObject { false }  // modules are not fresh
         method importsDo(action) {
             value.do { o ->
                 if (o.isExternal) then { action.apply(o) }
@@ -1638,7 +1647,6 @@ def objectNode is public = object {
                 kind
             }
         }
-        method isFresh -> Boolean { true }     // the epitome of freshness!
         method isTrait {
             // answers true if this object qualifies to be a trait, whether
             // or not it was declared with the trait syntax
@@ -1695,7 +1703,7 @@ def objectNode is public = object {
             st.node := self
         }
         method body { value }
-        method returnsObject { true }
+        method returnsObject { true }    // objectNode
         method returnedObjectScope { scope }
         method canInherit { inTrait.not }   // an object can inherit if not in a trait
         method canUse { true }
@@ -1902,7 +1910,13 @@ def memberNode is public = object {
         method canonicalName { value }
         method isMember { true }
         method isCall { true }
-
+        once method returnsObject {      // memberNode
+            self.requestReturnsFreshObject
+        }
+        method returnedObjectScope {
+            // precondition: returnsObject
+            self.scope
+        }
         method parts { list.with(requestPart.request(nameString).setStart(reqStart)) }
         method arguments { emptySeq }
         method argumentsDo(action) { }
@@ -1924,7 +1938,7 @@ def memberNode is public = object {
         method isSelfOrOuter {
             receiver.isSelfOrOuter
         }
-        once method isFresh -> Boolean {
+        once method isFresh -> Boolean {    // memberNode
             self.returnsFreshObject
         }
         method map(blk) ancestors(ac) {
@@ -1950,7 +1964,7 @@ def memberNode is public = object {
         }
         method toGrace(depth : Number) -> String {
             var s := ""
-            if ((receiver.isImplicit || receiver.isSelfOrOuter).not) then {
+            if (receiver.isImplicit.not) then {
                 s := receiver.toGrace(depth) ++ "."
             }
             s := s ++ self.value
@@ -2174,6 +2188,9 @@ def identifierNode is public = object {
         method numTypeArgs {
             if (false == generics) then { 0 } else { generics.size }
         }
+        method returnedObjectScope {
+            scope.getScope (nameString) ifAbsent {fakeSymbolTable}
+        }
         method hasTypeArgs { false ≠ generics }
         method accept(visitor : AstVisitor) from(ac) {
             if (visitor.visitIdentifier(self) up(ac)) then {
@@ -2358,7 +2375,9 @@ def opNode is public = object {
     method canonicalName { value ++ "(_)" }
     method receiver { left }
     method isCall { true }
-
+    once method returnsObject {      // opNode
+        self.requestReturnsFreshObject
+    }
     method parts {
         list.with(requestPart.request (value) withArgs [right] .setStart(opPos))
     }
@@ -2864,7 +2883,7 @@ def returnNode is public = object {
         dtype := other.dtype
         self
     }
-    method returnsObject { value.returnsObject }
+    method returnsObject { value.returnsObject }  // returnNode
     method returnedObjectScope {
         // precondition: returns object
         value.returnedObjectScope

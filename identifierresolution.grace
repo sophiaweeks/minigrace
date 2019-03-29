@@ -134,16 +134,18 @@ class newScopeIn(parent') kind(variety') {
         elementScopes.at(n)put(scp)
     }
     method getScope(n) {
-        if (elementScopes.containsKey(n)) then {
-            return elementScopes.at(n)
+        elementScopes.at(n) ifAbsent {
+            util.log 50 verbose ("scope {self}: elements.containsKey({n}) = " ++
+                  "{elements.containsKey(n)} but no elementScope for {n}")
+            //  This occurs for names like `true` that are built-in, but for which there
+            //  is no symbolTable describing their atttributes.
+            //  TODO: add complete information for the built-in names.
+            //  in the meantime:
+            universalScope
         }
-//        util.log 70 verbose ("scope {self}: elements.containsKey({n}) = {elements.containsKey(n)}" ++
-//              " but elementScopes.containsKey({n}) = {elementScopes.containsKey(n)}")
-        //  This occurs for names like `true` that are built-in, but for which there
-        //  is no symbolTable describing their atttributes.
-        //  TODO: add complete information for the built-in names.
-        //  in the meantime:
-        return universalScope
+    }
+    method getScope(n) ifAbsent(b) {
+        elementScopes.at(n) ifAbsent(b)
     }
     method asStringWithParents {
         var result := "\nCurrent: {self}"
@@ -253,6 +255,9 @@ class newScopeIn(parent') kind(variety') {
         if (rcvrNode.isIdentifier) then {
             scopeInNest(rcvrNode.nameString)
         } elseif { rcvrNode.isCall } then {
+            if { rcvrNode.receiver.isImplicit } then {
+                util.log 50 verbose "About to request receiverScope of an implicit receiver"
+            }
             receiverScope(rcvrNode.receiver).getScope(rcvrNode.nameString)
         } elseif { rcvrNode.isOuter } then {
             var resultScope := rcvrNode.scope.enclosingObjectScope  // self's scope
@@ -462,6 +467,9 @@ class newScopeIn(parent') kind(variety') {
                 ++ "{description} scope{more}. Use a different name.")
                 atRange(ident.range)
         }
+    }
+    method generatorIsFresh {
+        self.isObjectScope && { parent.isMethodScope }
     }
 }
 
@@ -1091,14 +1099,12 @@ method buildSymbolTableFor(topNode) ancestors(topChain) {
         inherit ast.baseVisitor
         method visitDefDec (o) up (anc) {
             def rhs = o.value
-            if (rhs.returnsObject) then {
-                o.scope.at(o.nameString) putScope(rhs.returnedObjectScope)
-            }
+            o.scope.at(o.nameString) putScope(rhs.returnedObjectScope)
             true
         }
         method visitMethod (o) up (anc) {
             def myParent = anc.parent
-            if (o.returnsObject) then {
+            if (o.isFresh) then {
                 myParent.scope.at(o.nameString) putScope(o.returnedObjectScope)
                 if (anc.forebears.forebears.isEmpty.not) then {
                     // omit this if I'm at the module-level
@@ -1393,21 +1399,10 @@ method transformInherits(inhNode) ancestors(anc) {
 }
 
 method transformCall(cNode) -> ast.AstNode {
-    def methodName = cNode.nameString
     var result := cNode
-    def s = cNode.scope
     def nominalRcvr = cNode.receiver
     if (nominalRcvr.isImplicit) then {
-        def rcvr = s.resolveOuterMethod(methodName) fromNode(cNode)
-        if (rcvr.isIdentifier) then {
-            util.log 60 verbose "Transformed {cNode.pretty 0} did nothing"
-            return cNode
-        }
-        def definingScope = s.thatDefines(methodName)
-        checkForAmbiguityOf (cNode)
-            definedIn (definingScope) asA (definingScope.kind(methodName))
-        cNode.receiver := rcvr.receiver
-        cNode.onSelf
+        resolver.resolveImplicitReceiverIn(cNode)
     } elseif { nominalRcvr.isOuter && (cNode.nameString == "outer") } then {
         // deal with outer.outer ..., which has been parsed into a memberNode
         // The reciever has already been converted from an identifier to an
@@ -1420,6 +1415,30 @@ method transformCall(cNode) -> ast.AstNode {
     }
     result
 }
+
+def resolver = object {
+    method resolveImplicitReceiverIn(cNode) {
+        // finds the real receiver for the request cNode, and
+        // substitutes it for the implicit receiver.
+
+        collectParentNames(cNode.enclosingObject)
+            // will do nothing if names have already been collected
+        def methodName = cNode.nameString
+        def s = cNode.scope
+        def rcvr = s.resolveOuterMethod(methodName) fromNode(cNode)
+        if (rcvr.isIdentifier) then {
+            util.log 50 verbose "Transformed {cNode.pretty 0} did nothing"
+            return cNode
+        }
+        def definingScope = s.thatDefines(methodName)
+        checkForAmbiguityOf (cNode)
+            definedIn (definingScope) asA (definingScope.kind(methodName))
+        cNode.receiver := rcvr.receiver
+        cNode.onSelf
+    }
+}
+
+ast.resolver := resolver        // inject the dependency
 
 method resolve(moduleObject) {
     util.log_verbose "rewriting tree."

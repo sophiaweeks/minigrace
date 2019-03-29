@@ -514,7 +514,7 @@ method compiletypedec(o) in (obj) {
     if (o.value.kind == "typeliteral") then {o.value.name := tName }
     def typeMethod = ast.methodNode.new(
             [ast.signaturePart.partName(o.nameString) scope(enclosing)],
-            typeFunBody (o.value) named (tName), ast.unknownType) scope(enclosing)
+            typeFunBody (o.value) named (tName) scope(enclosing), ast.unknownType) scope(enclosing)
             // Why unknownType, rather than typeType?  Because the latter will
             // compile a check that the return value is actually a type, which
             // causes a circularity when trying to import collections. The check
@@ -525,14 +525,16 @@ method compiletypedec(o) in (obj) {
     o.register := reg
     reg
 }
-method typeFunBody(typeExpr) named (tName) {
+method typeFunBody(typeExpr) named (tName) scope(s) {
     if (typeExpr.kind == "op") then {
         // this guard prevents us from renaming the rhs in decls like type A⟦T⟧ = B⟦T⟧
-        [ ast.callNode.new(
-                typeExpr,
-                [ast.requestPart.request "setName"
-                     withArgs[ ast.stringNode.new(tName) ] ]
-        ).onSelf ]
+        [ ast.callNode.new
+            (
+                typeExpr, [
+                    ast.requestPart.request "setName" withArgs [
+                        ast.stringNode.new(tName).setScope(s) ].setScope(s) ]
+                            ).setScope(s).onSelf
+        ]
     } else {
         [ typeExpr ]
     }
