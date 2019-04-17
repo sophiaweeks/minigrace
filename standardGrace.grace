@@ -466,6 +466,7 @@ type Predicate2⟦ArgT1, ArgT2⟧ = Function2⟦ArgT1, ArgT2, Boolean⟧
 type Predicate3⟦ArgT1, ArgT2, ArgT3⟧ = Function3⟦ArgT1, ArgT2, ArgT3, Boolean⟧
     // Function with 3 arguments of types ArgT1, ArgT2, and ArgT3, returning Boolean
 
+type CollectionFactory⟦T⟧ = collections.CollectionFactory⟦T⟧
 type Collection⟦T⟧ = collections.Collection⟦T⟧
 type Iterable⟦T⟧ = collections.Iterable⟦T⟧
 type Expandable⟦T⟧ = collections.Expandable⟦T⟧
@@ -485,25 +486,21 @@ def SubobjectResponsibility is public = collections.SubobjectResponsibility
 def ConcurrentModification is public = collections.ConcurrentModification
 def UninitializedVariable is public = ProgrammingError.refine "UninitializedVariable"
 
-method collection⟦T⟧ { collections.collection⟦T⟧ }
-method enumerable⟦T⟧ { collections.enumerable⟦T⟧ }
-method indexable⟦T⟧ { collections.indexable⟦T⟧ }
+method sequence { collections.sequence }
+method sequence⟦T⟧(arg) { collections.sequence.withAll⟦T⟧(arg) }
+method emptySequence⟦T⟧ { collections.sequence.empty⟦T⟧ }
 
-method sequence⟦T⟧ { collections.sequence⟦T⟧ }
-method sequence⟦T⟧(arg) { collections.sequence⟦T⟧.withAll(arg) }
-def emptySequence is public = collections.sequence.empty
+method list { collections.list }
+method list⟦T⟧(arg) { collections.list.withAll⟦T⟧(arg) }
+method emptyList⟦T⟧ { collections.list.empty⟦T⟧ }
 
-method list⟦T⟧ { collections.list⟦T⟧ }
-method list⟦T⟧(arg) { collections.list⟦T⟧.withAll(arg) }
-method emptyList⟦T⟧ { collections.list⟦T⟧.empty }
+method set { collections.set }
+method set⟦T⟧(arg) { collections.set.withAll⟦T⟧(arg) }
+method emptySet⟦T⟧ { collections.set.empty⟦T⟧ }
 
-method set⟦T⟧ { collections.set⟦T⟧ }
-method set⟦T⟧(arg) { collections.set⟦T⟧.withAll(arg) }
-method emptySet⟦T⟧ { collections.set⟦T⟧.empty }
-
-method dictionary⟦K, T⟧  { collections.dictionary⟦K, T⟧ }
-method dictionary⟦K, T⟧(arg) { collections.dictionary⟦K, T⟧.withAll(arg) }
-method emptyDictionary⟦K, T⟧ { collections.dictionary⟦K, T⟧.empty }
+method dictionary { collections.dictionary }
+method dictionary⟦K, T⟧(arg) { collections.dictionary.withAll⟦K, T⟧(arg) }
+method emptyDictionary⟦K, T⟧ { collections.dictionary.empty⟦K, T⟧ }
 
 def binding is public = collections.binding
 def range is public = collections.range

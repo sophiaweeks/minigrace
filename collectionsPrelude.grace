@@ -473,20 +473,20 @@ once method emptySequence⟦T⟧ is confidential {
     }
 }
 
-class sequence⟦T⟧ {
+class sequence {
 
     method asString { "the sequence factory" }
 
-    method empty {
+    method empty⟦T⟧ {
         // this is an optimization: there need be just one empty sequence of each type
         emptySequence⟦T⟧
     }
 
-    method with(x:T) { [] ++ [x] }
+    method with⟦T⟧(x:T) { [] ++ [x] }
 
-    method withAll(arg: Collection⟦T⟧) { [] ++ arg }
+    method withAll⟦T⟧(arg: Collection⟦T⟧) { [] ++ arg }
 
-    method << (source) { [] ++ source }
+    method <<⟦T⟧ (source) { [] ++ source }
 
 }
 
@@ -516,21 +516,21 @@ method hashAndCombine(aHash, anObj) {
 ›       //  ^ is bitwsie XOR
 }
 
-class list⟦T⟧ {
+class list {
     
     method asString { "the list factory" }
     
-    method empty -> List⟦T⟧ {
+    method empty⟦T⟧ -> List⟦T⟧ {
         withAll(emptySequence)
     }
     
-    method with(x:T)  -> List⟦T⟧ {
+    method with⟦T⟧(x:T)  -> List⟦T⟧ {
         def result = empty
         result.add(x)
         result
     }
 
-    method withAll(a: Collection⟦T⟧) -> List⟦T⟧ {
+    method withAll⟦T⟧(a: Collection⟦T⟧) -> List⟦T⟧ {
         object {
             use indexable⟦T⟧
 
@@ -831,26 +831,26 @@ def removed = object {
     method hash { self.myIdentityHash }
 }
 
-class set⟦T⟧ {
+class set {
 
     method asString { "the set factory" }
 
-    method withAll(a: Collection⟦T⟧) -> Set⟦T⟧ {
+    method withAll⟦T⟧(a: Collection⟦T⟧) -> Set⟦T⟧ {
         def cap = max (a.sizeIfUnknown{2} * 3 + 1, 8)
         def result = ofCapacity (cap)
         a.do { x -> result.add(x) }
         result
     }
-    method with(x:T) -> Set⟦T⟧ {
+    method with⟦T⟧(x:T) -> Set⟦T⟧ {
         empty.add(x)
     }
-    method empty -> Set⟦T⟧ {
-        ofCapacity 8
+    method empty⟦T⟧ -> Set⟦T⟧ {
+        ofCapacity⟦T⟧ 8
     }
     
     method << (source) { self.withAll(source) }
 
-    class ofCapacity(cap) -> Set⟦T⟧ is confidential {
+    class ofCapacity⟦T⟧(cap) -> Set⟦T⟧ is confidential {
         use collection⟦T⟧
         var mods is readable := 0
         var inner := prelude.primitiveArray.new(cap)
@@ -1141,10 +1141,11 @@ type Binding⟦K,T⟧ = {
     ==(other) -> Boolean
 }
 
-class binding⟦K, T⟧ {
+def binding is public = object {
+
     method asString { "the binding factory" }
 
-    class key(k)value(v) {
+    class key⟦K, T⟧(k)value(v) {
         def key is public = k
         def value is public = v
         method asString { "{key}::{value}" }
@@ -1163,15 +1164,15 @@ type ComparableToDictionary⟦K,T⟧ = interface {
     at(_:K)ifAbsent(_) -> T
 }
 
-class dictionary⟦K,T⟧ {
+class dictionary {
 
     method asString { "the dictionary factory" }
 
-    method with(aBinding) {
+    method with⟦K,T⟧(aBinding) {
         empty.add(aBinding)
     }
 
-    method withAll(initialBindings: Collection⟦Binding⟦K,T⟧⟧) {
+    method withAll⟦K,T⟧(initialBindings: Collection⟦Binding⟦K,T⟧⟧) {
         // we can't say -> Dictionary⟦K,T⟧, because checking that (dynamically)
         // requires building a dictionary for the memo table in the Dictionary type
 
@@ -1180,9 +1181,9 @@ class dictionary⟦K,T⟧ {
         result
     }
     
-    method << (source:Collection⟦Binding⟦K,T⟧⟧) { self.withAll(source) }
+    method <<⟦K,T⟧ (source:Collection⟦Binding⟦K,T⟧⟧) { self.withAll⟦K,T⟧ (source) }
 
-    class empty {
+    class empty⟦K,T⟧ {
         // we can't say -> Dictionary⟦K,T⟧, because checking that (dynamically)
         // requires building a dictionary for the memo table in the Dictionary type
 
