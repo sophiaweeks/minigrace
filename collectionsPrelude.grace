@@ -473,7 +473,7 @@ once method emptySequence⟦T⟧ is confidential {
     }
 }
 
-class sequence {
+def sequence:CollectionFactory is public = object {
 
     method asString { "the sequence factory" }
 
@@ -516,7 +516,7 @@ method hashAndCombine(aHash, anObj) {
 ›       //  ^ is bitwsie XOR
 }
 
-class list {
+def list is public = object {
     
     method asString { "the list factory" }
     
@@ -831,7 +831,7 @@ def removed = object {
     method hash { self.myIdentityHash }
 }
 
-class set {
+def set is public = object {
 
     method asString { "the set factory" }
 
@@ -1164,7 +1164,7 @@ type ComparableToDictionary⟦K,T⟧ = interface {
     at(_:K)ifAbsent(_) -> T
 }
 
-class dictionary {
+def dictionary is public = object {
 
     method asString { "the dictionary factory" }
 
