@@ -46,14 +46,14 @@ type Predicate1⟦ArgT1⟧ = Function1⟦ArgT1, Boolean⟧
 
 type SelfType = Unknown     // becuase it's not yet in the language
 
-type CollectionFactory⟦T⟧ = interface {
-    empty -> Collection⟦T⟧
+type CollectionFactory = interface {
+    empty⟦T⟧ -> Collection⟦T⟧
         // an empty collection
-    with(element:T) -> Collection⟦T⟧
+    with⟦T⟧ (element:T) -> Collection⟦T⟧
         // a collection containing a single element
-    withAll(elements:Collection⟦T⟧) -> Collection⟦T⟧
+    withAll⟦T⟧ (elements:Collection⟦T⟧) -> Collection⟦T⟧
         // a collection containing elements
-    << (source:Collection⟦T⟧) -> Collection⟦T⟧
+    <<⟦T⟧ (source:Collection⟦T⟧) -> Collection⟦T⟧
 }
 
 type Collection⟦T⟧ = Object & interface {
