@@ -3802,7 +3802,7 @@ function matchCase(obj, cases, elseCase) {
                        "in match(_)case(_)…, no case matches",
                        obj);
     }
-    const matching = trueCases.map(i => "case " + i + " on line " + cases[i].definitionLine);
+    const matching = trueCases.map(i => "case " + (i+1) + " on line " + cases[i].definitionLine);
     const matchingDesc = "(" + listWithAnd(matching) + ")";
     raiseException(MatchErrorObject,
                    "in match(_)case(_)…, " + trueCount + " cases match " + matchingDesc,
@@ -3873,7 +3873,7 @@ GraceExceptionPacket.prototype = {
             errMsg = callmethod(errMsg, "++(1)", [1], callmethod(this, "message", [0]));
             Grace_errorPrint(errMsg);
             var bt = callmethod(this, "backtrace", [0]);
-            var prefix = new GraceString("  raised at ");
+            var prefix = new GraceString("  raised in ");
             var rf = new GraceString("  requested from ");
             while (callmethod(bt, "size", [0])._value > 0) {
                 Grace_errorPrint(callmethod(prefix, "++(1)", [1],
@@ -4009,12 +4009,13 @@ function do_import(modname, moduleCodeFunc) {
         throw new GraceExceptionPacket(ImportErrorObject,
             new GraceString("could not find code for module '" + modname + "'"));
     var newModule = (modname === "standardGrace") ? Grace_prelude : new GraceModule(modname);
-    // importing "standardGrace" adds to the built-in prelude.
+    // importing "standardGrace" _adds_ to the built-in prelude.
     try {
         var f = requestModuleInitialization(newModule, modname, moduleCodeFunc);
         importedModules[modname] = f;
         return f;
     } catch (ex) {
+        throw ex;
         return handleRequestException(ex, newModule, "module initialization",
                                       {definitionModule: modname}, []);
     }
@@ -4115,7 +4116,10 @@ function raiseException(ex, msg, data) {
     }
     if (caller.isGraceRequest) {
         Object.defineProperty(newEx, 'moduleName', {value: callee.definitionModule});
-        Object.defineProperty(newEx, 'methodName', {value: canonicalMethodName(caller.arguments[1])} );
+        const methName = caller.arguments[1];
+        if (methName) {
+            Object.defineProperty(newEx, 'methodName', {value: canonicalMethodName(methName)});
+        }
     }
     throw newEx;
 }

@@ -202,17 +202,17 @@ MiniGrace.prototype.run = function() {
     lineNumber = 1;
     moduleName = this.modname;
     eval(minigrace.generated_output);   // defines a global gracecode_‹moduleName›
-    var theModuleFunc = window[graceModuleName(this.modname)];
+    var theModuleFunc = window[graceModuleName(moduleName)];
     testpass = false;    // not used anywhere else ?
     if (Grace_prelude.methods["while(1)do(1)"])
         Grace_prelude.methods["while(1)do(1)"].safe = this.breakLoops;
     this.trapErrors(function() {
         if(document.getElementById("debugtoggle").checked) {
             GraceDebugger.cache.start();
-            GraceDebugger.that = new GraceModule(this.modname);
+            GraceDebugger.that = new GraceModule(moduleName);
             GraceDebugger.run(theModuleFunc, GraceDebugger.that);
         } else {
-            do_import(this.modname, theModuleFunc);
+            do_import(moduleName, theModuleFunc);
         }
     });
 };
