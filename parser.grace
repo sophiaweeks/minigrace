@@ -2203,6 +2203,7 @@ method inheritOrUse {
 
 method inheritModifier(node) {
     // parse an alias or exclude modifier on an `inherit` clause
+    // node is the inheritNode
 
     if (sym.isKeyword.not) then { return false }
     def symValue = sym.value
@@ -2216,11 +2217,12 @@ method inheritModifier(node) {
 }
 
 method parseAlias(node) {
+    // parse an alias modifier on an `inherit` clause; node is the inheritNode
     next    // skip the alias keyword
-    def newMeth = methodHeader
+    def newMeth = methodSignature
     if (sym.isOp && (sym.value == "=")) then {
         next
-        def oldMeth = methodHeader.appliedOccurrence
+        def oldMeth = methodSignature.appliedOccurrence
         if (newMeth.numParams ≠ oldMeth.numParams) then {
             errormessages.syntaxError "a method and its alias must have the same number of parameters"
                 atRange (newMeth.line, newMeth.linePos, oldMeth.endPos)
@@ -2234,6 +2236,7 @@ method parseAlias(node) {
     return true
 }
 method parseExclude(node) {
+    // parse an exclude modifier on an `inherit` clause; node is the inheritNode
     next    // skip the exclude keyword
     def excludedMeth = methodHeader.appliedOccurrence
     node.addExclusion (excludedMeth)
@@ -2833,17 +2836,19 @@ method doreturn {
 }
 
 method methodInInterface {
-    // parses a method signature in an interface literal
-    def methodTypeTok = sym
-    var methNode := methodHeader
-    var dtype := methNode.dtype
-    if (false == dtype) then {
-        dtype := ast.unknownType
-    }
-    def o = ast.methodTypeNode.new(methNode.signature, dtype)
-                                            .setPositionFrom(methodTypeTok)
-    values.push(o)
+    // parses a method signature in an interface literal, and pushes the
+    // resulting node, along with any comments, onto values
+    values.push(methodSignature)
     reconcileComments
+}
+
+method methodSignature {
+    // parses a method signature, and returns a methodSignatureNode
+    def firstTok = sym
+    def m = methodHeader
+    var rt := m.dtype
+    if (false == rt) then { rt := ast.unknownType }
+    ast.methodSignatureNode(m.signature, rt).setPositionFrom(firstTok)
 }
 
 method checkForSeparatorInInterface {
