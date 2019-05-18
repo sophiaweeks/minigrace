@@ -2937,10 +2937,7 @@ def inheritNode is public = object {
             if (visitor.visitInherits(self) up(ac)) then {
                 def newChain = ac.extend(self)
                 value.accept(visitor) from(newChain)
-                aliases.do { a ->
-                    a.newSignature.accept(visitor) from(newChain)
-                    a.oldSignature.accept(visitor) from(newChain)
-                }
+                aliases.do { a -> a.accept(visitor) from(newChain) }
                 exclusions.do { e -> e.accept(visitor) from(newChain) }
             }
         }
@@ -2993,7 +2990,7 @@ def inheritNode is public = object {
         }
         method nameString { value.toGrace(0) }
         method addAlias (newSig) for (oldSig) {
-            aliases.push(aliasNew(newSig) old(oldSig.appliedOccurrence))
+            aliases.push(aliasNew(newSig) old(oldSig))
         }
         method addExclusion(meth) {
             exclusions.push(meth)
@@ -3021,15 +3018,28 @@ type AliasPair = {
 }
 
 class aliasNew(n) old(o) {
+    inherit baseNode
     use equality
-    method newName {newSignature.asIdentifier}
-    method oldName {oldSignature.asIdentifier}
+
     def newSignature is public = n
     def oldSignature is public = o
+    def kind is public = "alias"
+    method newName {newSignature.asIdentifier}
+    method oldName {oldSignature.asIdentifier}
     method asString { "alias {newSignature.nameString} = {oldSignature.nameString}" }
     method pretty(depth) {
         def spc = "  " * (depth+1)
         "{spc}alias\n{spc}  {newSignature.pretty(depth+2)}\n{spc}  =\n{spc}  {oldSignature.pretty(depth+2)}"
+    }
+    method accept(visitor) from (ac) {
+        if (visitor.visitAlias(self) up (ac)) then {
+            def newChain = ac.extend(self)
+            newSignature.accept(visitor) from (newChain)
+            oldSignature.accept(visitor) from (newChain)
+        }
+    }
+    method declarationKindWithAncestors(ac) {
+        k.fromTrait
     }
     method hash { (newSignature.hash * 1171) + oldSignature.hash }
     method isExecutable { false }
